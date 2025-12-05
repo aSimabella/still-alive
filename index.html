@@ -54,7 +54,6 @@
             text-decoration: none; font-family: sans-serif;
         }
 
-        /* POPUP TASARIMI */
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden;}
         .leaflet-popup-content { margin: 0; line-height: 1.5; font-size: 13px; }
         .popup-header { background: #e3f2fd; padding: 12px 15px; border-bottom: 1px solid #bbdefb; font-weight: bold; color: #0d47a1; font-size: 14px;}
@@ -102,17 +101,18 @@
             const hataAlani = document.getElementById('hata-alani');
             hataAlani.style.display = 'none';
 
-            // --- DEĞİŞİKLİK BURADA: KÖPRÜ KULLANIYORUZ ---
-            // 'corsproxy.io' servisi, güvenlik duvarını aşmamızı sağlar.
-            const esasLink = 'https://api.orhanaydogdu.com.tr/deprem/kandilli/live';
-            const guvenliLink = 'https://corsproxy.io/?' + encodeURIComponent(esasLink);
+            // YENİ PROXY YÖNTEMİ: AllOrigins
+            // Bu yöntem veriyi 'ham' (raw) olarak çeker ve CORS hatasını aşar.
+            const apiUrl = 'https://api.orhanaydogdu.com.tr/deprem/kandilli/live';
+            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(apiUrl);
 
             try {
-                const response = await fetch(guvenliLink);
-                if (!response.ok) throw new Error("Bağlantı hatası");
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error("Sunucu yanıt vermiyor");
                 
                 const data = await response.json();
-                if (!data.result) throw new Error("Liste boş");
+                
+                if (!data.result) throw new Error("Veri boş geldi");
 
                 depremKatmani.clearLayers();
                 const depremler = data.result.slice(0, 100);
@@ -122,7 +122,7 @@
                     const lng = deprem.geojson.coordinates[0];
                     const mag = deprem.mag;
 
-                    // Saat ve Tarihi Ayıkla
+                    // Saat ve Tarih Ayıklama
                     let tarihGosterim = deprem.date;
                     let saatGosterim = "--:--";
                     try {
@@ -154,7 +154,6 @@
                                 <i class="fa-solid fa-layer-group"></i> 
                                 Derinlik: ${deprem.depth} km
                             </div>
-                            
                             <div class="saat-kutusu">
                                 <i class="fa-regular fa-clock" style="font-size:1.4em; color:#333;"></i>
                                 <div style="text-align:left;">
@@ -172,7 +171,7 @@
                 console.error(error);
                 durum.innerText = "Hata!";
                 hataAlani.style.display = 'block';
-                hataAlani.innerText = "Veri engellendi (Proxy hatası).";
+                hataAlani.innerText = "Bağlantı sorunu (" + error.message + ").";
             }
         }
 
