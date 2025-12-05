@@ -17,7 +17,6 @@
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
         #map { height: 100vh; width: 100%; }
         
-        /* BİLGİ KUTUSU */
         .bilgi-kutusu {
             position: absolute; top: 20px; right: 20px; z-index: 1000;
             background: rgba(255, 255, 255, 0.95); padding: 15px;
@@ -32,7 +31,6 @@
         
         .hata-kutusu { background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; font-size: 11px; margin-top: 10px; display: none; border: 1px solid #ef9a9a;}
 
-        /* Konum Butonu */
         .konum-butonu {
             position: fixed; bottom: 30px; right: 20px; z-index: 2000;
             background: #007bff; color: white; border: none;
@@ -42,7 +40,6 @@
             display: flex; align-items: center; justify-content: center;
         }
         
-        /* Dünya Haritası Butonu */
         .dunya-butonu {
             position: fixed; bottom: 30px; left: 20px; z-index: 2000;
             background: #2c3e50; color: white; border: none;
@@ -53,7 +50,6 @@
             text-decoration: none; font-family: sans-serif;
         }
 
-        /* POPUP TASARIMI */
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden;}
         .leaflet-popup-content { margin: 0; line-height: 1.5; font-size: 13px; }
         .popup-header { background: #e3f2fd; padding: 12px 15px; border-bottom: 1px solid #bbdefb; font-weight: bold; color: #0d47a1; font-size: 15px;}
@@ -79,8 +75,9 @@
         <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 4.0 ve Üzeri (Riskli)</div>
         <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 3.0 - 4.0 Arası</div>
         <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 3.0 Altı (Ufak)</div>
-        <div class="guncelleme-bilgisi" id="zaman-damgasi">Konumlar Hesaplanıyor...</div>
+        <div class="guncelleme-bilgisi" id="zaman-damgasi">Veri İndiriliyor...</div>
         <div class="hata-kutusu" id="hata-alani"></div>
+        <button onclick="verileriGetir()" style="width:100%; margin-top:10px; padding:5px; cursor:pointer; font-size:12px;">🔄 Yenile</button>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -96,7 +93,7 @@
         var depremKatmani = L.layerGroup().addTo(map);
         var konumKatmani = L.layerGroup().addTo(map);
 
-        // --- 81 İLİN KOORDİNATLARI (ŞEHİR BULMAK İÇİN) ---
+        // ŞEHİR VERİTABANI
         const iller = [
             {ad: "ADANA", lat: 37.00, lng: 35.32}, {ad: "ADIYAMAN", lat: 37.76, lng: 38.27}, {ad: "AFYON", lat: 38.75, lng: 30.54},
             {ad: "AĞRI", lat: 39.72, lng: 43.05}, {ad: "AMASYA", lat: 40.65, lng: 35.83}, {ad: "ANKARA", lat: 39.92, lng: 32.86},
@@ -127,34 +124,37 @@
             {ad: "KİLİS", lat: 36.71, lng: 37.11}, {ad: "OSMANİYE", lat: 37.07, lng: 36.25}, {ad: "DÜZCE", lat: 40.84, lng: 31.15}
         ];
 
-        // EN YAKIN ŞEHRİ BULAN FONKSİYON
+        // HIZLI HESAPLAMA (Pisagor yerine Basitleştirilmiş Mesafe)
         function enYakinSehriBul(lat, lng) {
             let enYakin = "Bilinmiyor";
-            let enKisaMesafe = 99999;
+            let enKisaMesafeKaresi = 99999;
 
-            iller.forEach(il => {
-                // Basit Pisagor Teoremi ile mesafe hesabı (Yeterli hassasiyet)
-                let mesafe = Math.sqrt(Math.pow(il.lat - lat, 2) + Math.pow(il.lng - lng, 2));
-                if (mesafe < enKisaMesafe) {
-                    enKisaMesafe = mesafe;
-                    enYakin = il.ad;
+            for (let i = 0; i < iller.length; i++) {
+                // Karekök almadan kıyaslama yapıyoruz (İşlemciyi yormaz, çok hızlıdır)
+                let dLat = iller[i].lat - lat;
+                let dLng = iller[i].lng - lng;
+                let mesafeKaresi = (dLat * dLat) + (dLng * dLng);
+
+                if (mesafeKaresi < enKisaMesafeKaresi) {
+                    enKisaMesafeKaresi = mesafeKaresi;
+                    enYakin = iller[i].ad;
                 }
-            });
+            }
             return enYakin;
         }
 
         function verileriGetir() {
             const durum = document.getElementById('zaman-damgasi');
             const hataAlani = document.getElementById('hata-alani');
-            durum.innerText = "Veri Çekiliyor...";
+            durum.innerText = "Veri İndiriliyor...";
             hataAlani.style.display = 'none';
 
-            // EMSC (Avrupa Sismoloji Merkezi) - Çember Arama Modu
-            const url = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=geojson&limit=100&lat=39.0&lon=35.0&maxradius=12&minmag=2.0';
+            // LIMIT: Sadece son 50 depremi çekiyoruz (Dosya boyutu küçük, hızlı iner)
+            const url = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=geojson&limit=50&lat=39.0&lon=35.0&maxradius=12&minmag=2.0';
 
             fetch(url)
                 .then(response => {
-                    if (!response.ok) throw new Error("Sunucu yanıt vermedi");
+                    if (!response.ok) throw new Error("Sunucu meşgul");
                     return response.json();
                 })
                 .then(data => {
@@ -162,7 +162,7 @@
                     const depremler = data.features;
                     
                     if(!depremler || depremler.length === 0) {
-                        durum.innerText = "Liste boş.";
+                        durum.innerText = "Deprem yok.";
                         return;
                     }
 
@@ -170,4 +170,69 @@
                         const lng = feature.geometry.coordinates[0];
                         const lat = feature.geometry.coordinates[1];
                         const depth = feature.geometry.coordinates[2];
-                        const mag =
+                        const mag = feature.properties.mag;
+                        
+                        // ŞEHİR HESABI (Artık Anlık)
+                        const hesaplananSehir = enYakinSehriBul(lat, lng);
+                        const orijinalYer = feature.properties.flynn_region || "";
+
+                        const tarihObj = new Date(feature.properties.time);
+                        const saat = tarihObj.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
+                        const tarih = tarihObj.toLocaleDateString('tr-TR');
+
+                        let renk = '#2ecc71';
+                        let yaricap = mag * 2.5;
+                        if (mag >= 4.0) { renk = '#e74c3c'; yaricap = mag * 4; }
+                        else if (mag >= 3.0) { renk = '#f39c12'; yaricap = mag * 3; }
+
+                        var circle = L.circleMarker([lat, lng], {
+                            color: '#fff', fillColor: renk, fillOpacity: 0.9,
+                            radius: yaricap, weight: 1.5
+                        });
+
+                        circle.bindPopup(`
+                            <div class="popup-header">📍 ${hesaplananSehir}</div>
+                            <div class="popup-body">
+                                <div style="font-size:0.85em; color:#888; margin-bottom:10px;">${orijinalYer}</div>
+                                <div class="popup-row">
+                                    <i class="fa-solid fa-house-crack"></i> 
+                                    Büyüklük: <strong style="color:${renk}; font-size:1.2em; margin-left:5px;">${mag.toFixed(1)}</strong>
+                                </div>
+                                <div class="popup-row">
+                                    <i class="fa-solid fa-layer-group"></i> 
+                                    Derinlik: ${depth ? Math.abs(depth) : '-'} km
+                                </div>
+                                <div class="saat-kutusu">
+                                    <i class="fa-regular fa-clock" style="font-size:1.4em; color:#333;"></i>
+                                    <div style="text-align:left;">
+                                        <div style="font-weight:bold; font-size:1.2em; color:#333; line-height:1;">${saat}</div>
+                                        <div style="font-size:0.8em; color:#888;">${tarih}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                        circle.addTo(depremKatmani);
+                    });
+                    durum.innerText = "Son: " + new Date().toLocaleTimeString();
+                })
+                .catch(error => {
+                    console.error("Hata:", error);
+                    durum.innerText = "Bağlantı Hatası";
+                    hataAlani.style.display = 'block';
+                    hataAlani.innerText = "İnternet bağlantınızı kontrol edin.";
+                });
+        }
+
+        function konumBul() {
+            map.locate({setView: true, maxZoom: 10});
+        }
+        map.on('locationfound', e => {
+            konumKatmani.clearLayers();
+            L.circleMarker(e.latlng, {radius: 10, color:'#fff', fillColor:'#007bff', fillOpacity:1}).addTo(konumKatmani).bindPopup("Siz").openPopup();
+        });
+
+        verileriGetir();
+        setInterval(verileriGetir, 60000); 
+    </script>
+</body>
+</html>
