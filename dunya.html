@@ -3,175 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dünya Deprem Haritası</title>
+    <title>Deprem Takip (Dünya)</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007bff">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
         #map { height: 100vh; width: 100%; }
+        .bilgi-kutusu { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; width: 230px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-left: 5px solid #007bff; }
+        .bilgi-kutusu h2 { margin: 0 0 10px 0; font-size: 16px; color: #333; font-weight: 700; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; font-weight: 500; }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1); }
+        .guncelleme-bilgisi { font-size: 11px; color: #888; margin-top: 10px; text-align: right; font-weight: 600; }
+        .konum-butonu { position: fixed; bottom: 30px; right: 20px; z-index: 2000; background: #007bff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); display: flex; align-items: center; justify-content: center; }
         
-        .bilgi-kutusu {
-            position: absolute; top: 20px; right: 20px; z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 15px;
-            border-radius: 12px; width: 240px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(0,0,0,0.05);
-            border-left: 5px solid #007bff;
-        }
-        .bilgi-kutusu h2 { margin: 0 0 10px 0; font-size: 16px; color: #333; font-weight: 700; border-bottom: 1px solid #eee; padding-bottom: 5px;}
-        .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; color: #555; font-weight: 500;}
-        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1);}
-        .guncelleme-bilgisi { font-size: 11px; color: #888; margin-top: 10px; text-align: right; font-weight: 600;}
-        
-        .hata-kutusu { color: #e74c3c; font-size: 11px; display: none; margin-top: 5px; font-weight: bold;}
+        /* TÜRKİYE'YE GİT BUTONU */
+        .gecis-butonu { position: fixed; bottom: 30px; left: 20px; z-index: 2000; background: #e74c3c; color: white; border: none; border-radius: 30px; padding: 0 20px; height: 50px; font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: sans-serif; transition: transform 0.2s; }
+        .gecis-butonu:hover { transform: scale(1.05); }
 
-        /* KONUM BUTONU */
-        .konum-butonu {
-            position: fixed; bottom: 30px; right: 20px; z-index: 2000;
-            background: #007bff; color: white; border: none;
-            border-radius: 50%; width: 50px; height: 50px;
-            font-size: 20px; cursor: pointer; 
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s;
-        }
-        .konum-butonu:hover { background: #0056b3; transform: scale(1.05); }
-
-        /* TÜRKİYE'YE DÖN BUTONU (SOL ALT) */
-        .tr-butonu {
-            position: fixed; bottom: 30px; left: 20px; z-index: 2000;
-            background: #e74c3c; color: white; border: none;
-            border-radius: 30px; padding: 0 20px; height: 50px;
-            font-size: 14px; font-weight: bold; cursor: pointer; 
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
-            display: flex; align-items: center; gap: 10px;
-            text-decoration: none; transition: transform 0.2s;
-        }
-        .tr-butonu:hover { transform: scale(1.05); }
-
-        .leaflet-popup-content-wrapper { border-radius: 10px; padding: 0; }
-        .leaflet-popup-content { margin: 15px; line-height: 1.5; font-size: 13px; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden; }
+        .leaflet-popup-content { margin: 0; line-height: 1.5; font-size: 13px; }
+        .popup-header { background: #e3f2fd; padding: 12px 15px; border-bottom: 1px solid #bbdefb; font-weight: bold; color: #0d47a1; font-size: 15px; }
+        .popup-body { padding: 15px; }
+        .saat-kutusu { background-color: #f8f9fa; border: 1px solid #eee; border-radius: 8px; padding: 8px; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
     </style>
 </head>
 <body>
-
     <div id="map"></div>
-
-    <button class="konum-butonu" id="konumBtn" onclick="konumBul()" title="Konumumu Bul">
-        <i class="fa-solid fa-location-crosshairs"></i>
-    </button>
-
-    <a href="index.html" class="tr-butonu">
-        <i class="fa-solid fa-map-location-dot"></i> Türkiye Haritası
-    </a>
+    <button class="konum-butonu" id="konumBtn" onclick="konumBul()"><i class="fa-solid fa-location-crosshairs"></i></button>
+    
+    <a href="index.html" class="gecis-butonu">🇹🇷 Türkiye Haritası</a>
 
     <div class="bilgi-kutusu">
-        <h2>Dünya Deprem Haritası</h2>
-        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 5.0 ve Üzeri (Büyük)</div>
-        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 4.0 - 5.0 Arası</div>
+        <h2>🌍 Dünya Deprem</h2>
+        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 5.0+ (Riskli)</div>
+        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 4.0 - 5.0</div>
         <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 4.0 Altı (Orta)</div>
-        
-        <div class="guncelleme-bilgisi" id="zaman-damgasi">USGS Verileri Yükleniyor...</div>
-        <div class="hata-kutusu" id="hata-alani"></div>
+        <div class="guncelleme-bilgisi" id="zaman-damgasi">Veri Bekleniyor...</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
         var map = L.map('map', {zoomControl: false}).setView([20, 0], 2);
         L.control.zoom({ position: 'topleft' }).addTo(map);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap, © USGS',
-            maxZoom: 19
-        }).addTo(map);
-
-        var depremKatmani = L.layerGroup().addTo(map);
-        var konumKatmani = L.layerGroup().addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© USGS', maxZoom: 19 }).addTo(map);
+        var depremKatmani = L.layerGroup().addTo(map); var konumKatmani = L.layerGroup().addTo(map);
 
         function verileriGetir() {
-            const durum = document.getElementById('zaman-damgasi');
-            const hataAlani = document.getElementById('hata-alani');
-            hataAlani.style.display = 'none';
-
+            document.getElementById('zaman-damgasi').innerText = "Veri İndiriliyor...";
             fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson')
-                .then(response => {
-                    if (!response.ok) throw new Error("USGS Sunucusuna ulaşılamadı");
-                    return response.json();
-                })
-                .then(data => {
+                .then(r => r.json()).then(data => {
                     depremKatmani.clearLayers();
-                    const depremler = data.features;
-
-                    depremler.forEach(feature => {
-                        const lng = feature.geometry.coordinates[0];
-                        const lat = feature.geometry.coordinates[1];
-                        const depth = feature.geometry.coordinates[2];
-                        const mag = feature.properties.mag;
-                        const yer = feature.properties.place;
-                        const zaman = new Date(feature.properties.time).toLocaleString('tr-TR');
-
-                        let renk = '#2ecc71'; 
-                        let yaricap = mag * 2;
-                        
-                        if (mag >= 5.0) { renk = '#e74c3c'; yaricap = mag * 3.5; }
-                        else if (mag >= 4.0) { renk = '#f39c12'; yaricap = mag * 2.5; }
-
-                        var circle = L.circleMarker([lat, lng], {
-                            color: '#fff', fillColor: renk, fillOpacity: 0.8,
-                            radius: yaricap, weight: 1.5
-                        });
-
-                        circle.bindPopup(`
-                            <div style="text-align:center;">
-                                <strong style="color:#333; font-size:14px;">${yer}</strong>
-                                <hr style="margin:5px 0; border:0; border-top:1px solid #eee;">
-                                Büyüklük: <strong style="color:${renk}; font-size:16px">${mag}</strong><br>
-                                <span style="font-size:11px; color:#555">Derinlik: ${depth} km</span><br>
-                                <span style="font-size:11px; color:#888">${zaman}</span>
-                            </div>
-                        `);
-                        circle.addTo(depremKatmani);
+                    data.features.forEach(f => {
+                        const lat = f.geometry.coordinates[1], lng = f.geometry.coordinates[0], mag = f.properties.mag;
+                        let renk = mag >= 5.0 ? '#e74c3c' : (mag >= 4.0 ? '#f39c12' : '#2ecc71');
+                        let r = mag * 2.5;
+                        const t = new Date(f.properties.time);
+                        L.circleMarker([lat, lng], { color: '#fff', fillColor: renk, fillOpacity: 0.8, radius: r, weight: 1.5 })
+                            .bindPopup(`<div class="popup-header">${f.properties.place}</div><div class="popup-body">Büyüklük: <strong style="color:${renk}; font-size:1.2em">${mag.toFixed(1)}</strong><br>Derinlik: ${f.geometry.coordinates[2].toFixed(1)} km<div class="saat-kutusu"><i class="fa-regular fa-clock" style="font-size:1.4em"></i><div><strong>${t.toLocaleTimeString('tr-TR')}</strong><br><small>${t.toLocaleDateString('tr-TR')}</small></div></div></div>`)
+                            .addTo(depremKatmani);
                     });
-
-                    const simdi = new Date();
-                    durum.innerText = "Son: " + simdi.toLocaleTimeString();
-                })
-                .catch(error => {
-                    console.error(error);
-                    durum.innerText = "Hata!";
-                    hataAlani.style.display = 'block';
-                    hataAlani.innerText = "USGS verisi alınamadı.";
-                });
+                    document.getElementById('zaman-damgasi').innerText = "Son: " + new Date().toLocaleTimeString();
+                }).catch(e => document.getElementById('zaman-damgasi').innerText = "Bağlantı Hatası");
         }
-
-        function konumBul() {
-            const btn = document.getElementById('konumBtn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            map.locate({setView: true, maxZoom: 8});
-        }
-        
-        map.on('locationfound', function(e) {
-            konumKatmani.clearLayers();
-            L.circleMarker(e.latlng, {radius: 8, color:'#fff', fillColor:'#007bff', fillOpacity:1}).addTo(konumKatmani).bindPopup("Konumunuz").openPopup();
-            L.circleMarker(e.latlng, {radius: 40, color:'#007bff', fillColor:'#007bff', fillOpacity:0.1, weight:0}).addTo(konumKatmani);
-            document.getElementById('konumBtn').innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
-        });
-
-        map.on('locationerror', function() {
-            alert("Konum alınamadı.");
-            document.getElementById('konumBtn').innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
-        });
-
-        verileriGetir();
-        setInterval(verileriGetir, 60000); 
+        function konumBul() { map.locate({setView: true, maxZoom: 5}); }
+        map.on('locationfound', e => { konumKatmani.clearLayers(); L.circleMarker(e.latlng, {radius: 10, color:'#fff', fillColor:'#007bff', fillOpacity:1}).addTo(konumKatmani).bindPopup("Siz").openPopup(); });
+        verileriGetir(); setInterval(verileriGetir, 60000);
     </script>
 </body>
 </html>
