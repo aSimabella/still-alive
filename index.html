@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
-        #map { height: 100vh; width: 100%; z-index: 1; } /* Harita en altta (1) */
+        #map { height: 100vh; width: 100%; z-index: 1; } /* Harita katmanı en altta */
         
         /* BİLGİ KUTUSU */
         .bilgi-kutusu { position: absolute; top: 20px; right: 20px; z-index: 9999; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; width: 230px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-left: 5px solid #e74c3c; }
@@ -21,15 +21,15 @@
         .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1); }
         .guncelleme-bilgisi { font-size: 11px; color: #888; margin-top: 10px; text-align: right; font-weight: 600; }
         
-        /* KONUM BUTONU */
+        /* BUTONLAR (z-index: 9999 ile en üste sabitlendi) */
         .konum-butonu { position: fixed; bottom: 30px; right: 20px; z-index: 9999 !important; background: #007bff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); display: flex; align-items: center; justify-content: center; }
         
-        /* DÜNYA'YA GİT BUTONU - ZIRHLI */
+        /* DÜNYA'YA GİT BUTONU */
         .gecis-butonu { 
             position: fixed; 
             bottom: 30px; 
             left: 20px; 
-            z-index: 9999 !important; /* En üstte durmaya zorla */
+            z-index: 9999 !important; 
             background: #2c3e50; 
             color: white; 
             border: none; 
@@ -45,7 +45,7 @@
             text-decoration: none; 
             font-family: sans-serif; 
             transition: transform 0.2s; 
-            transform: translateZ(0); /* Grafik kartını zorla çalıştırır */
+            transform: translateZ(0);
         }
         .gecis-butonu:hover { transform: scale(1.05); }
 
@@ -64,9 +64,9 @@
 
     <div class="bilgi-kutusu">
         <h2>🇹🇷 Türkiye Deprem</h2>
-        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 5.0+ (Riskli)</div>
-        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 3.0 - 5.0</div>
-        <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 3.0 Altı (Ufak)</div>
+        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 5.0 ve Üzeri (Riskli)</div>
+        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 4.0 - 5.0 Arası</div>
+        <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 4.0 Altı (Ufak)</div>
         <div class="guncelleme-bilgisi" id="zaman-damgasi">Veri Bekleniyor...</div>
     </div>
 
@@ -87,7 +87,13 @@
                         const lat = f.geometry.coordinates[1], lng = f.geometry.coordinates[0], mag = f.properties.mag;
                         if (lat >= 34 && lat <= 43 && lng >= 25 && lng <= 46) { // TÜRKİYE FİLTRESİ
                             sayac++;
-                            let renk = mag >= 5.0 ? '#e74c3c' : (mag >= 3.5 ? '#f39c12' : '#2ecc71');
+                            
+                            // GÜNCELLENMİŞ RENK MANTIĞI (DÜNYA İLE AYNI)
+                            let renk;
+                            if (mag >= 5.0) { renk = '#e74c3c'; }       // 5.0 ve üstü Kırmızı
+                            else if (mag >= 4.0) { renk = '#f39c12'; }  // 4.0 - 5.0 Turuncu
+                            else { renk = '#2ecc71'; }                  // 4.0 altı Yeşil
+
                             let r = mag * 2.5;
                             const t = new Date(f.properties.time);
                             
@@ -96,7 +102,7 @@
                                 .addTo(depremKatmani);
                         }
                     });
-                    document.getElementById('zaman-damgasi').innerText = sayac > 0 ? "Son: " + new Date().toLocaleTimeString() : "Son 24 saatte büyük veri yok.";
+                    document.getElementById('zaman-damgasi').innerText = sayac > 0 ? "Son: " + new Date().toLocaleTimeString() : "Son 24 saatte bölgede veri yok.";
                 }).catch(e => document.getElementById('zaman-damgasi').innerText = "Bağlantı Hatası");
         }
         function konumBul() { map.locate({setView: true, maxZoom: 10}); }
