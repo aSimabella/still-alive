@@ -30,7 +30,13 @@
         .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1);}
         .guncelleme-bilgisi { font-size: 11px; color: #888; margin-top: 10px; text-align: right; font-weight: 600;}
 
-        /* BUTONLAR */
+        .hata-kutusu { 
+            background: #ffebee; color: #c62828; 
+            padding: 10px; border-radius: 4px; 
+            font-size: 11px; margin-top: 10px; 
+            display: none; border: 1px solid #ef9a9a;
+        }
+
         .konum-butonu {
             position: fixed; bottom: 30px; right: 20px; z-index: 2000;
             background: #007bff; color: white; border: none;
@@ -49,7 +55,6 @@
             text-decoration: none; font-family: sans-serif;
         }
 
-        /* POPUP TASARIMI */
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden;}
         .leaflet-popup-content { margin: 0; line-height: 1.5; font-size: 13px; }
         .popup-header { background: #e3f2fd; padding: 12px 15px; border-bottom: 1px solid #bbdefb; font-weight: bold; color: #0d47a1; font-size: 14px;}
@@ -72,21 +77,21 @@
 
     <div class="bilgi-kutusu">
         <h2>Canlı Deprem Takip</h2>
-        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 5.0 ve Üzeri (Riskli)</div>
-        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 3.0 - 5.0 Arası</div>
+        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 4.0 ve Üzeri (Riskli)</div>
+        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 3.0 - 4.0 Arası</div>
         <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 3.0 Altı (Ufak)</div>
         <div class="guncelleme-bilgisi" id="zaman-damgasi">Yükleniyor...</div>
+        <div class="hata-kutusu" id="hata-alani"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // Haritayı Türkiye Odaklı Başlat
         var map = L.map('map', {zoomControl: false}).setView([39.0, 35.0], 6);
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors © USGS', maxZoom: 19
+            attribution: '© OpenStreetMap contributors © EMSC', maxZoom: 19
         }).addTo(map);
 
         var depremKatmani = L.layerGroup().addTo(map);
@@ -94,80 +99,81 @@
 
         function verileriGetir() {
             const durum = document.getElementById('zaman-damgasi');
+            const hataAlani = document.getElementById('hata-alani');
+            durum.innerText = "Veri Çekiliyor...";
+            hataAlani.style.display = 'none';
 
-            // USGS'den tüm dünyadaki son gün depremlerini çekiyoruz (Proxy derdi yok!)
-            fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson')
-                .then(response => response.json())
+            // EMSC (Avrupa Sismoloji Merkezi) API
+            // Türkiye sınırları içindeki son 100 depremi istiyoruz.
+            // minlat, maxlat, minlon, maxlon ile SADECE TÜRKİYE'yi kare içine aldık.
+            const url = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=100&minlat=35&maxlat=43&minlon=25&maxlon=46';
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Sunucu yanıt vermedi");
+                    return response.json();
+                })
                 .then(data => {
                     depremKatmani.clearLayers();
                     const depremler = data.features;
                     
-                    let turkiyeSayaci = 0;
+                    if(!depremler || depremler.length === 0) {
+                        durum.innerText = "Veri listesi boş.";
+                        return;
+                    }
 
                     depremler.forEach(feature => {
                         const lng = feature.geometry.coordinates[0];
                         const lat = feature.geometry.coordinates[1];
                         const depth = feature.geometry.coordinates[2];
                         const mag = feature.properties.mag;
+                        const yer = feature.properties.flynn_region || "Bölge Belirsiz";
                         
-                        // FİLTRELEME SİHİRBAZLIĞI BURADA:
-                        // Sadece Türkiye ve yakın çevresindeki koordinatları alıyoruz.
-                        // Enlem (Lat): 34 ile 43 arası
-                        // Boylam (Lng): 25 ile 46 arası
-                        if (lat >= 34 && lat <= 43 && lng >= 25 && lng <= 46) {
-                            
-                            turkiyeSayaci++;
+                        // Tarih ve Saat Ayarlama (Otomatik Türkiye Saati)
+                        const tarihObj = new Date(feature.properties.time);
+                        const saat = tarihObj.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
+                        const tarih = tarihObj.toLocaleDateString('tr-TR');
 
-                            // Tarih Dönüşümü (Otomatik olarak Türkiye saatine çevirir)
-                            const tarihObj = new Date(feature.properties.time);
-                            const saat = tarihObj.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
-                            const tarih = tarihObj.toLocaleDateString('tr-TR');
-                            
-                            let renk = '#2ecc71';
-                            let yaricap = mag * 2.5;
-                            // USGS skalası için renk ayarı
-                            if (mag >= 5.0) { renk = '#e74c3c'; yaricap = mag * 4; }
-                            else if (mag >= 3.0) { renk = '#f39c12'; yaricap = mag * 3; }
+                        let renk = '#2ecc71';
+                        let yaricap = mag * 2.5;
+                        if (mag >= 4.0) { renk = '#e74c3c'; yaricap = mag * 4; }
+                        else if (mag >= 3.0) { renk = '#f39c12'; yaricap = mag * 3; }
 
-                            var circle = L.circleMarker([lat, lng], {
-                                color: '#fff', fillColor: renk, fillOpacity: 0.9,
-                                radius: yaricap, weight: 1.5
-                            });
+                        var circle = L.circleMarker([lat, lng], {
+                            color: '#fff', fillColor: renk, fillOpacity: 0.9,
+                            radius: yaricap, weight: 1.5
+                        });
 
-                            circle.bindPopup(`
-                                <div class="popup-header">${feature.properties.place}</div>
-                                <div class="popup-body">
-                                    <div class="popup-row">
-                                        <i class="fa-solid fa-house-crack"></i> 
-                                        Büyüklük: <strong style="color:${renk}; font-size:1.2em; margin-left:5px;">${mag.toFixed(1)}</strong>
-                                    </div>
-                                    <div class="popup-row">
-                                        <i class="fa-solid fa-layer-group"></i> 
-                                        Derinlik: ${depth.toFixed(1)} km
-                                    </div>
-                                    <div class="saat-kutusu">
-                                        <i class="fa-regular fa-clock" style="font-size:1.4em; color:#333;"></i>
-                                        <div style="text-align:left;">
-                                            <div style="font-weight:bold; font-size:1.2em; color:#333; line-height:1;">${saat}</div>
-                                            <div style="font-size:0.8em; color:#888;">${tarih}</div>
-                                        </div>
+                        circle.bindPopup(`
+                            <div class="popup-header">${yer}</div>
+                            <div class="popup-body">
+                                <div class="popup-row">
+                                    <i class="fa-solid fa-house-crack"></i> 
+                                    Büyüklük: <strong style="color:${renk}; font-size:1.2em; margin-left:5px;">${mag.toFixed(1)}</strong>
+                                </div>
+                                <div class="popup-row">
+                                    <i class="fa-solid fa-layer-group"></i> 
+                                    Derinlik: ${Math.abs(depth)} km
+                                </div>
+                                <div class="saat-kutusu">
+                                    <i class="fa-regular fa-clock" style="font-size:1.4em; color:#333;"></i>
+                                    <div style="text-align:left;">
+                                        <div style="font-weight:bold; font-size:1.2em; color:#333; line-height:1;">${saat}</div>
+                                        <div style="font-size:0.8em; color:#888;">${tarih}</div>
                                     </div>
                                 </div>
-                            `);
-                            circle.addTo(depremKatmani);
-                        }
+                            </div>
+                        `);
+                        circle.addTo(depremKatmani);
                     });
                     
-                    // Eğer hiç veri yoksa (USGS bazen çok küçükleri vermez) bilgi ver
-                    if(turkiyeSayaci === 0) {
-                        durum.innerText = "Son 24 saatte büyük deprem yok.";
-                    } else {
-                        durum.innerText = "Son Güncelleme: " + new Date().toLocaleTimeString();
-                    }
+                    durum.innerText = "Son: " + new Date().toLocaleTimeString();
                 })
                 .catch(error => {
-                    console.error(error);
-                    durum.innerText = "Veri Hatası";
+                    console.error("Hata:", error);
+                    durum.innerText = "Bağlantı Hatası!";
+                    hataAlani.style.display = 'block';
+                    hataAlani.innerText = "Veri çekilemedi. Lütfen sayfayı yenileyin.";
                 });
         }
 
