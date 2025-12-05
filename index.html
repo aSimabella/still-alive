@@ -75,7 +75,7 @@
         <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 4.0 ve Üzeri (Riskli)</div>
         <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 3.0 - 4.0 Arası</div>
         <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 3.0 Altı (Ufak)</div>
-        <div class="guncelleme-bilgisi" id="zaman-damgasi">Veri İndiriliyor...</div>
+        <div class="guncelleme-bilgisi" id="zaman-damgasi">Veri Bekleniyor...</div>
         <div class="hata-kutusu" id="hata-alani"></div>
         <button onclick="verileriGetir()" style="width:100%; margin-top:10px; padding:5px; cursor:pointer; font-size:12px;">🔄 Yenile</button>
     </div>
@@ -93,68 +93,20 @@
         var depremKatmani = L.layerGroup().addTo(map);
         var konumKatmani = L.layerGroup().addTo(map);
 
-        // ŞEHİR VERİTABANI
-        const iller = [
-            {ad: "ADANA", lat: 37.00, lng: 35.32}, {ad: "ADIYAMAN", lat: 37.76, lng: 38.27}, {ad: "AFYON", lat: 38.75, lng: 30.54},
-            {ad: "AĞRI", lat: 39.72, lng: 43.05}, {ad: "AMASYA", lat: 40.65, lng: 35.83}, {ad: "ANKARA", lat: 39.92, lng: 32.86},
-            {ad: "ANTALYA", lat: 36.88, lng: 30.70}, {ad: "ARTVİN", lat: 41.18, lng: 41.82}, {ad: "AYDIN", lat: 37.84, lng: 27.84},
-            {ad: "BALIKESİR", lat: 39.65, lng: 27.88}, {ad: "BİLECİK", lat: 40.15, lng: 29.98}, {ad: "BİNGÖL", lat: 38.88, lng: 40.49},
-            {ad: "BİTLİS", lat: 38.40, lng: 42.10}, {ad: "BOLU", lat: 40.73, lng: 31.60}, {ad: "BURDUR", lat: 37.72, lng: 30.29},
-            {ad: "BURSA", lat: 40.19, lng: 29.06}, {ad: "ÇANAKKALE", lat: 40.14, lng: 26.40}, {ad: "ÇANKIRI", lat: 40.60, lng: 33.62},
-            {ad: "ÇORUM", lat: 40.54, lng: 34.95}, {ad: "DENİZLİ", lat: 37.78, lng: 29.09}, {ad: "DİYARBAKIR", lat: 37.91, lng: 40.24},
-            {ad: "EDİRNE", lat: 41.67, lng: 26.55}, {ad: "ELAZIĞ", lat: 38.68, lng: 39.22}, {ad: "ERZİNCAN", lat: 39.75, lng: 39.49},
-            {ad: "ERZURUM", lat: 39.90, lng: 41.27}, {ad: "ESKİŞEHİR", lat: 39.76, lng: 30.52}, {ad: "GAZİANTEP", lat: 37.06, lng: 37.38},
-            {ad: "GİRESUN", lat: 40.91, lng: 38.39}, {ad: "GÜMÜŞHANE", lat: 40.46, lng: 39.48}, {ad: "HAKKARİ", lat: 37.57, lng: 43.74},
-            {ad: "HATAY", lat: 36.20, lng: 36.16}, {ad: "ISPARTA", lat: 37.76, lng: 30.55}, {ad: "MERSİN", lat: 36.81, lng: 34.64},
-            {ad: "İSTANBUL", lat: 41.01, lng: 28.97}, {ad: "İZMİR", lat: 38.42, lng: 27.14}, {ad: "KARS", lat: 40.60, lng: 43.09},
-            {ad: "KASTAMONU", lat: 41.37, lng: 33.77}, {ad: "KAYSERİ", lat: 38.72, lng: 35.48}, {ad: "KIRKLARELİ", lat: 41.73, lng: 27.22},
-            {ad: "KIRŞEHİR", lat: 39.14, lng: 34.16}, {ad: "KOCAELİ", lat: 40.85, lng: 29.88}, {ad: "KONYA", lat: 37.87, lng: 32.48},
-            {ad: "KÜTAHYA", lat: 39.42, lng: 29.98}, {ad: "MALATYA", lat: 38.35, lng: 38.31}, {ad: "MANİSA", lat: 38.61, lng: 27.42},
-            {ad: "KAHRAMANMARAŞ", lat: 37.57, lng: 36.93}, {ad: "MARDİN", lat: 37.31, lng: 40.74}, {ad: "MUĞLA", lat: 37.21, lng: 28.36},
-            {ad: "MUŞ", lat: 38.73, lng: 41.49}, {ad: "NEVŞEHİR", lat: 38.62, lng: 34.71}, {ad: "NİĞDE", lat: 37.96, lng: 34.68},
-            {ad: "ORDU", lat: 40.98, lng: 37.88}, {ad: "RİZE", lat: 41.02, lng: 40.51}, {ad: "SAKARYA", lat: 40.77, lng: 30.39},
-            {ad: "SAMSUN", lat: 41.27, lng: 36.33}, {ad: "SİİRT", lat: 37.93, lng: 41.94}, {ad: "SİNOP", lat: 42.02, lng: 35.15},
-            {ad: "SİVAS", lat: 39.75, lng: 37.01}, {ad: "TEKİRDAĞ", lat: 40.97, lng: 27.51}, {ad: "TOKAT", lat: 40.32, lng: 36.55},
-            {ad: "TRABZON", lat: 41.00, lng: 39.72}, {ad: "TUNCELİ", lat: 39.10, lng: 39.54}, {ad: "ŞANLIURFA", lat: 37.16, lng: 38.79},
-            {ad: "UŞAK", lat: 38.68, lng: 29.40}, {ad: "VAN", lat: 38.50, lng: 43.37}, {ad: "YOZGAT", lat: 39.82, lng: 34.80},
-            {ad: "ZONGULDAK", lat: 41.45, lng: 31.79}, {ad: "AKSARAY", lat: 38.37, lng: 34.02}, {ad: "BAYBURT", lat: 40.26, lng: 40.22},
-            {ad: "KARAMAN", lat: 37.18, lng: 33.22}, {ad: "KIRIKKALE", lat: 39.84, lng: 33.51}, {ad: "BATMAN", lat: 37.88, lng: 41.13},
-            {ad: "ŞIRNAK", lat: 37.52, lng: 42.46}, {ad: "BARTIN", lat: 41.63, lng: 32.33}, {ad: "ARDAHAN", lat: 41.11, lng: 42.70},
-            {ad: "IĞDIR", lat: 39.92, lng: 44.04}, {ad: "YALOVA", lat: 40.65, lng: 29.27}, {ad: "KARABÜK", lat: 41.20, lng: 32.62},
-            {ad: "KİLİS", lat: 36.71, lng: 37.11}, {ad: "OSMANİYE", lat: 37.07, lng: 36.25}, {ad: "DÜZCE", lat: 40.84, lng: 31.15}
-        ];
-
-        // HIZLI HESAPLAMA (Pisagor yerine Basitleştirilmiş Mesafe)
-        function enYakinSehriBul(lat, lng) {
-            let enYakin = "Bilinmiyor";
-            let enKisaMesafeKaresi = 99999;
-
-            for (let i = 0; i < iller.length; i++) {
-                // Karekök almadan kıyaslama yapıyoruz (İşlemciyi yormaz, çok hızlıdır)
-                let dLat = iller[i].lat - lat;
-                let dLng = iller[i].lng - lng;
-                let mesafeKaresi = (dLat * dLat) + (dLng * dLng);
-
-                if (mesafeKaresi < enKisaMesafeKaresi) {
-                    enKisaMesafeKaresi = mesafeKaresi;
-                    enYakin = iller[i].ad;
-                }
-            }
-            return enYakin;
-        }
-
         function verileriGetir() {
             const durum = document.getElementById('zaman-damgasi');
             const hataAlani = document.getElementById('hata-alani');
+            
             durum.innerText = "Veri İndiriliyor...";
             hataAlani.style.display = 'none';
 
-            // LIMIT: Sadece son 50 depremi çekiyoruz (Dosya boyutu küçük, hızlı iner)
+            // EMSC - AVRUPA SUNUCUSU
+            // Sadece Türkiye Koordinatlarını Çekiyoruz (Limit 50)
             const url = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=geojson&limit=50&lat=39.0&lon=35.0&maxradius=12&minmag=2.0';
 
             fetch(url)
                 .then(response => {
-                    if (!response.ok) throw new Error("Sunucu meşgul");
+                    if (!response.ok) throw new Error("Sunucu meşgul (" + response.status + ")");
                     return response.json();
                 })
                 .then(data => {
@@ -162,7 +114,7 @@
                     const depremler = data.features;
                     
                     if(!depremler || depremler.length === 0) {
-                        durum.innerText = "Deprem yok.";
+                        durum.innerText = "Veri bulunamadı.";
                         return;
                     }
 
@@ -172,10 +124,10 @@
                         const depth = feature.geometry.coordinates[2];
                         const mag = feature.properties.mag;
                         
-                        // ŞEHİR HESABI (Artık Anlık)
-                        const hesaplananSehir = enYakinSehriBul(lat, lng);
-                        const orijinalYer = feature.properties.flynn_region || "";
+                        // Orijinal Bölge İsmi (Hesaplama Yok!)
+                        const yer = feature.properties.flynn_region || feature.properties.unid || "Bölge Belirsiz";
 
+                        // Tarih ve Saat
                         const tarihObj = new Date(feature.properties.time);
                         const saat = tarihObj.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
                         const tarih = tarihObj.toLocaleDateString('tr-TR');
@@ -191,9 +143,8 @@
                         });
 
                         circle.bindPopup(`
-                            <div class="popup-header">📍 ${hesaplananSehir}</div>
+                            <div class="popup-header">${yer}</div>
                             <div class="popup-body">
-                                <div style="font-size:0.85em; color:#888; margin-bottom:10px;">${orijinalYer}</div>
                                 <div class="popup-row">
                                     <i class="fa-solid fa-house-crack"></i> 
                                     Büyüklük: <strong style="color:${renk}; font-size:1.2em; margin-left:5px;">${mag.toFixed(1)}</strong>
@@ -213,13 +164,14 @@
                         `);
                         circle.addTo(depremKatmani);
                     });
+                    
                     durum.innerText = "Son: " + new Date().toLocaleTimeString();
                 })
                 .catch(error => {
                     console.error("Hata:", error);
                     durum.innerText = "Bağlantı Hatası";
                     hataAlani.style.display = 'block';
-                    hataAlani.innerText = "İnternet bağlantınızı kontrol edin.";
+                    hataAlani.innerText = "İnternet sağlayıcınız veriyi engelliyor.";
                 });
         }
 
