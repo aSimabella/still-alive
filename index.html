@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canlı Deprem Takip</title>
+    <title>Global Deprem Takip</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
     <link rel="manifest" href="manifest.json">
@@ -17,6 +17,7 @@
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
         #map { height: 100vh; width: 100%; }
         
+        /* BİLGİ KUTUSU */
         .bilgi-kutusu {
             position: absolute; top: 20px; right: 20px; z-index: 1000;
             background: rgba(255, 255, 255, 0.95); padding: 15px;
@@ -28,8 +29,15 @@
         .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; font-weight: 500;}
         .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1);}
         .guncelleme-bilgisi { font-size: 11px; color: #888; margin-top: 10px; text-align: right; font-weight: 600;}
-        
-        .hata-kutusu { background: #ffebee; color: #c62828; padding: 10px; border-radius: 4px; font-size: 11px; margin-top: 10px; display: none; border: 1px solid #ef9a9a;}
+
+        /* HATA KUTUSU */
+        .hata-kutusu { 
+            background: #ffebee; color: #c62828; 
+            padding: 10px; border-radius: 4px; 
+            font-size: 11px; margin-top: 10px; 
+            display: none; border: 1px solid #ef9a9a;
+            word-wrap: break-word;
+        }
 
         .konum-butonu {
             position: fixed; bottom: 30px; right: 20px; z-index: 2000;
@@ -38,16 +46,6 @@
             font-size: 20px; cursor: pointer; 
             box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
             display: flex; align-items: center; justify-content: center;
-        }
-        
-        .dunya-butonu {
-            position: fixed; bottom: 30px; left: 20px; z-index: 2000;
-            background: #2c3e50; color: white; border: none;
-            border-radius: 30px; padding: 0 20px; height: 50px;
-            font-size: 14px; font-weight: bold; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-            display: flex; align-items: center; gap: 10px; 
-            text-decoration: none; font-family: sans-serif;
         }
 
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden;}
@@ -68,14 +66,13 @@
 
     <div id="map"></div>
     <button class="konum-butonu" id="konumBtn" onclick="konumBul()"><i class="fa-solid fa-location-crosshairs"></i></button>
-    <a href="dunya.html" class="dunya-butonu">🌍 Dünya Haritası</a>
 
     <div class="bilgi-kutusu">
-        <h2>Canlı Deprem Takip</h2>
-        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 4.0 ve Üzeri (Riskli)</div>
-        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 3.0 - 4.0 Arası</div>
-        <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 3.0 Altı (Ufak)</div>
-        <div class="guncelleme-bilgisi" id="zaman-damgasi">Veri Bekleniyor...</div>
+        <h2>Global Deprem Takip</h2>
+        <div class="legend-item"><span class="dot" style="background:#e74c3c;"></span> 5.0 ve Üzeri (Riskli)</div>
+        <div class="legend-item"><span class="dot" style="background:#f39c12;"></span> 4.0 - 5.0 Arası</div>
+        <div class="legend-item"><span class="dot" style="background:#2ecc71;"></span> 4.0 Altı (Orta)</div>
+        <div class="guncelleme-bilgisi" id="zaman-damgasi">Amerika'ya Bağlanıyor...</div>
         <div class="hata-kutusu" id="hata-alani"></div>
         <button onclick="verileriGetir()" style="width:100%; margin-top:10px; padding:5px; cursor:pointer; font-size:12px;">🔄 Yenile</button>
     </div>
@@ -83,11 +80,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        var map = L.map('map', {zoomControl: false}).setView([39.0, 35.0], 6);
+        // Haritayı Türkiye Odaklı Başlat (Zoom: 5 yaptık ki komşuları da gör)
+        var map = L.map('map', {zoomControl: false}).setView([39.0, 35.0], 5);
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors © EMSC', maxZoom: 19
+            attribution: '© OpenStreetMap contributors © USGS', maxZoom: 19
         }).addTo(map);
 
         var depremKatmani = L.layerGroup().addTo(map);
@@ -97,16 +95,16 @@
             const durum = document.getElementById('zaman-damgasi');
             const hataAlani = document.getElementById('hata-alani');
             
-            durum.innerText = "Veri İndiriliyor...";
+            durum.innerText = "USGS Verisi İndiriliyor...";
             hataAlani.style.display = 'none';
 
-            // EMSC - AVRUPA SUNUCUSU
-            // Sadece Türkiye Koordinatlarını Çekiyoruz (Limit 50)
-            const url = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=geojson&limit=50&lat=39.0&lon=35.0&maxradius=12&minmag=2.0';
+            // ZIRHLI LİNK: USGS .GOV (Amerikan Hükümeti)
+            // Bu linki engellemek çok zordur.
+            const url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
 
             fetch(url)
                 .then(response => {
-                    if (!response.ok) throw new Error("Sunucu meşgul (" + response.status + ")");
+                    if (!response.ok) throw new Error("USGS Yanıt Vermedi: " + response.status);
                     return response.json();
                 })
                 .then(data => {
@@ -114,7 +112,7 @@
                     const depremler = data.features;
                     
                     if(!depremler || depremler.length === 0) {
-                        durum.innerText = "Veri bulunamadı.";
+                        durum.innerText = "Dünya genelinde veri yok.";
                         return;
                     }
 
@@ -123,9 +121,7 @@
                         const lat = feature.geometry.coordinates[1];
                         const depth = feature.geometry.coordinates[2];
                         const mag = feature.properties.mag;
-                        
-                        // Orijinal Bölge İsmi (Hesaplama Yok!)
-                        const yer = feature.properties.flynn_region || feature.properties.unid || "Bölge Belirsiz";
+                        const yer = feature.properties.place;
 
                         // Tarih ve Saat
                         const tarihObj = new Date(feature.properties.time);
@@ -134,8 +130,8 @@
 
                         let renk = '#2ecc71';
                         let yaricap = mag * 2.5;
-                        if (mag >= 4.0) { renk = '#e74c3c'; yaricap = mag * 4; }
-                        else if (mag >= 3.0) { renk = '#f39c12'; yaricap = mag * 3; }
+                        if (mag >= 5.0) { renk = '#e74c3c'; yaricap = mag * 4; }
+                        else if (mag >= 4.0) { renk = '#f39c12'; yaricap = mag * 3; }
 
                         var circle = L.circleMarker([lat, lng], {
                             color: '#fff', fillColor: renk, fillOpacity: 0.9,
@@ -151,7 +147,7 @@
                                 </div>
                                 <div class="popup-row">
                                     <i class="fa-solid fa-layer-group"></i> 
-                                    Derinlik: ${depth ? Math.abs(depth) : '-'} km
+                                    Derinlik: ${depth.toFixed(1)} km
                                 </div>
                                 <div class="saat-kutusu">
                                     <i class="fa-regular fa-clock" style="font-size:1.4em; color:#333;"></i>
@@ -168,10 +164,10 @@
                     durum.innerText = "Son: " + new Date().toLocaleTimeString();
                 })
                 .catch(error => {
-                    console.error("Hata:", error);
-                    durum.innerText = "Bağlantı Hatası";
+                    console.error("HATA:", error);
+                    durum.innerText = "Bağlantı Hatası!";
                     hataAlani.style.display = 'block';
-                    hataAlani.innerText = "İnternet sağlayıcınız veriyi engelliyor.";
+                    hataAlani.innerHTML = `<strong>Sorun:</strong> İnternet sağlayıcınız veri akışını engelliyor.`;
                 });
         }
 
